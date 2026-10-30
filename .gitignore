@@ -1,0 +1,38 @@
+# --- Secrets & local config: never commit ----------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.databricks
+.databrickscfg
+.claude/
+instance/
+*.sqlite
+*.sqlite3
+
+# --- Editor / OS ------------------------------------------------------------
+.vscode
+*.code-workspace
+.DS_Store
+
+# Local-only dev launcher: not part of the app or the submission.
+start.sh
+# app.yaml with real workspace IDs filled in, kept out of the public repo.
+app.local.yaml
+
+# --- Dependencies & build caches --------------------------------------------
+frontend/node_modules
+.deps
+.venv
+__pycache__
+*.pyc
+/images
+# Source maps are ~4 MB per build and only matter when DevTools is open.
+*.map
+
+# NOTE: frontend/build is intentionally NOT ignored. `databricks sync` honors
+# .gitignore, and the deployed Databricks App serves the committed React build,
+# so ignoring it would silently ship an app with no frontend.

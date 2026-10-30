@@ -1,0 +1,62 @@
+command:
+  - gunicorn
+  - app:app
+  # Threaded workers (gthread), not the default sync workers. Agent-mode SSE
+  # proxying holds a connection open for the length of a research run (up to
+  # 90 min); on sync workers that would tie up a whole worker process and could
+  # starve the small pool. A parked SSE thread is blocked on network I/O (GIL
+  # released), so the other threads keep serving. 2 procs x 8 threads = 16
+  # concurrent slots. gthread ships with gunicorn (no new dep) and avoids
+  # gevent's monkey-patching, which can misbehave with psycopg3/Lakebase.
+  - -k
+  - gthread
+  - -w
+  - "2"
+  - --threads
+  - "8"
+
+# Public, non-secret config goes here.
+#
+#   Provided automatically by the Databricks Apps runtime (no setup needed):
+#     DATABRICKS_HOST           - workspace hostname
+#     DATABRICKS_CLIENT_ID      - the app service principal's OAuth client id
+#     DATABRICKS_CLIENT_SECRET  - the app service principal's OAuth secret
+#     DATABRICKS_WORKSPACE_ID   - numeric workspace id (used by the embed iframe)
+#
+#   Signing keys (FLASK_SECRET_KEY / JWT_SECRET_KEY) have built-in defaults in
+#   backend/config.py, so nothing needs provisioning. Set those env vars only if
+#   you want to override the defaults (e.g. rotate or source from a secret scope).
+#
+#   Optional:
+#     CORS_ORIGINS  - comma-separated allow-list, defaults to http://localhost:3000
+#     DATABASE_URL  - SQLAlchemy URL, defaults to sqlite:///db.sqlite
+env:
+  - name: DATABRICKS_DASHBOARD_ID
+    value: '<dashboard-id>'
+  # Single shared Genie space (Step D). Genie is scoped per tenant by the
+  # per-tenant service principals below, not by separate spaces.
+  - name: DATABRICKS_GENIE_SPACE_ID
+    value: '<genie-space-id>'
+  - name: GENIE_SP_CLIENT_ID_APEX
+    value: '<apex-sp-client-id>'
+  # Tenant client secrets come from a Databricks secret scope
+  # (aibi-embedded-analytics), attached to the app as the resources below.
+  - name: GENIE_SP_CLIENT_SECRET_APEX
+    valueFrom: genie-sp-secret-apex
+  - name: GENIE_SP_CLIENT_ID_SYNERGY
+    value: '<synergy-sp-client-id>'
+  - name: GENIE_SP_CLIENT_SECRET_SYNERGY
+    valueFrom: genie-sp-secret-synergy
+  # Lakebase (autoscale Postgres) backing Genie chat history. The app connects
+  # AS its own service principal (DATABRICKS_CLIENT_ID, injected at runtime) and
+  # mints short-lived OAuth tokens — no DB password to store. These match the
+  # defaults in backend/config.py (LAKEBASE_HOST has none); listed here so the
+  # target is explicit and overridable per environment.
+  - name: LAKEBASE_ENDPOINT
+    value: 'projects/aibi-embedding-chat/branches/production/endpoints/primary'
+  - name: LAKEBASE_HOST
+    value: '<lakebase-endpoint-host>'
+  - name: LAKEBASE_DATABASE
+    value: 'databricks_postgres'
+  - name: LAKEBASE_SCHEMA
+    value: 'genie_chat'
